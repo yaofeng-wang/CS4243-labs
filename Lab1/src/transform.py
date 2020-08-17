@@ -11,8 +11,11 @@ def load_image(file_name):
     if not osp.exists(file_name):
         print('{} not exist'.format(file_name))
         return
-    image = io.imread(file_name)
-    return np.array(image)
+    image = np.asarray(io.imread(file_name))
+    if len(image.shape)==3 and image.shape[2]>3:
+        image = image[:, :, :3]
+    # print(image.shape) #should be (x, x, 3)
+    return image
 
 def save_image(image, file_name):
     """
@@ -38,9 +41,20 @@ def cs4243_resize(image, new_width, new_height):
     if len(image.shape)==2:
         new_image = np.zeros((new_height, new_width), dtype='uint8')
     ###Your code here####
-
+    img_width = image.shape[0]
+    img_height = image.shape[1]
+    x_ratio = img_width / new_width
+    y_ratio = img_height / new_height
+    
+    # get corresponding img pixel for each new_img pixel
+    for x in range(new_width):
+        for y in range(new_height):
+            img_x = min(int(x * x_ratio), img_width-1)
+            img_y = min(int(y * y_ratio), img_height-1)
+            new_image[x][y] = image[img_x][img_y]  
     ###
-    return new_image
+    return new_image    
+    
 
 def cs4243_rgb2grey(image):
     """
@@ -55,10 +69,14 @@ def cs4243_rgb2grey(image):
         print('RGB Image should have 3 channels')
         return
     ###Your code here####
-
+    # construct weights numpy
+    weights = np.array([0.299, 0.587, 0.114])
+    # multiply pixel RGB with weights and sum up the RGB axis
+    gray = np.sum(weights*image, axis=2, keepdims=True).reshape(image.shape[0], image.shape[1])
+    gray_scaled = gray / 255 
     ###
 
-    return image/255.
+    return gray_scaled
 
 def cs4243_histnorm(image, grey_level=256):
     """
