@@ -89,7 +89,9 @@ def cs4243_histnorm(image, grey_level=256):
     """
     res_image = image.copy()
     ##your code here ###
-    
+    min_pixel = np.amin(res_image)
+    max_pixel = np.amax(res_image)
+    res_image = (res_image - min_pixel) / (max_pixel - min_pixel) * (grey_level-1)
     ####
     return res_image
 
