@@ -111,6 +111,21 @@ def cs4243_histequ(image, grey_level=256):
     """
     ###your code here####
     
+    # get the original histogram
+    x, y = image.shape
+    hist = [0] * grey_level
+    for i in range(x):
+        for j in range(y):
+            hist[image[i, j]]+=1
+    ori_hist = hist
+    
+    # get the cumulative distribution function (CDF) normalised to image size
+    cum_hist = [sum(ori_hist[:i+1]) for i in range(len(ori_hist))]
+    cum_hist = np.array(cum_hist) / (x*y)
+    
+    # get the uniform histogram from normalised CDF
+    uniform_hist = np.uint8((grey_level-1) * cum_hist)
+    
     ###
 
     # Set the intensity of the pixel in the raw image to its corresponding new intensity 
