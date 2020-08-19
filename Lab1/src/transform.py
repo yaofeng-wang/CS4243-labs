@@ -196,7 +196,10 @@ def cs4243_gaussian_kernel(ksize, sigma):
     """
     kernel = np.zeros((ksize, ksize))
     ###Your code here####
-
+    cp = (int)(ksize/2)
+    for i in range(ksize):
+        for j in range(ksize):
+            kernel[i,j] = np.exp(((i-cp)**2 + (j-cp)**2) / (-2*sigma**2))
     ###
 
     return kernel / kernel.sum()
