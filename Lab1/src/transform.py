@@ -37,21 +37,23 @@ def cs4243_resize(image, new_width, new_height):
     :param new_height: int
     :return: new_image: numpy.ndarray
     """
-    new_image = np.zeros((new_height, new_width, 3), dtype='uint8')
-    if len(image.shape)==2:
-        new_image = np.zeros((new_height, new_width), dtype='uint8')
-    ###Your code here####
-    img_width = image.shape[0]
-    img_height = image.shape[1]
-    x_ratio = img_width / new_width
-    y_ratio = img_height / new_height
+    # if new_width < 0 or new_height < 0, np.zeros() will throw a ValueError.
     
-    # get corresponding img pixel for each new_img pixel
-    for x in range(new_width):
-        for y in range(new_height):
-            img_x = min(int(x * x_ratio), img_width-1)
-            img_y = min(int(y * y_ratio), img_height-1)
-            new_image[x][y] = image[img_x][img_y]  
+    # if new_width == 0 or new_height == 0, we won't need to do any calculation.
+    if new_width == 0 or new_height == 0:
+        return new_image
+    
+    # resizing algorithm taken from
+    # https://tech-algorithm.com/articles/nearest-neighbor-image-scaling/
+    width, height = image.shape[0], image.shape[1]
+    x_ratio = int(((width << 16) / new_width) + 1)
+    y_ratio = int(((height << 16) / new_height) + 1)
+    
+    for y in range(new_height):
+        for x in range(new_width):
+            px = int((x*x_ratio) >> 16)
+            py = int((y*y_ratio) >> 16)
+            new_image[x,y] = image[px,py]
     ###
     return new_image    
     
@@ -71,12 +73,13 @@ def cs4243_rgb2grey(image):
     ###Your code here####
     # construct weights numpy
     weights = np.array([0.299, 0.587, 0.114])
+    
     # multiply pixel RGB with weights and sum up the RGB axis
-    gray = np.sum(weights*image, axis=2, keepdims=True).reshape(image.shape[0], image.shape[1])
-    gray_scaled = gray / 255 
+    image = np.dot(image, weights)
+    
     ###
 
-    return gray_scaled
+    return image/255.
 
 def cs4243_histnorm(image, grey_level=256):
     """
