@@ -201,7 +201,6 @@ def cs4243_gaussian_kernel(ksize, sigma):
         for j in range(ksize):
             kernel[i,j] = np.exp(((i-cp)**2 + (j-cp)**2) / (-2*sigma**2))
     ###
-
     return kernel / kernel.sum()
 
 def cs4243_filter(image, kernel):
@@ -217,7 +216,33 @@ def cs4243_filter(image, kernel):
     filtered_image = np.zeros((Hi, Wi))
 
     ###Your code here####
+    # pad image to handle border pixels
+    pad_height = (int)((Hk - 1)/2)
+    pad_width = (int)((Wk - 1)/2)
+    image_pad = pad_zeros(image, pad_height, pad_width)
 
+    # Flip the kernel horizontal and vertical
+    kernel = cs4243_rotate180(kernel)
+    
+    # compute effective output size, assume stride=1
+    out_height = 1 + Hi - Hk + 2*pad_height
+    out_width = 1 + Wi - Wk + 2*pad_width
+    
+    # get initial nodes of receptive fields
+    recep_fields_h = [i for i in range(out_height)]
+    recep_fields_w = [i for i in range(out_width)]
+    
+    for i in recep_fields_h:
+        for j in recep_fields_w:         
+            # get receptive area
+            recep_area = image_pad[i:i+Hk, j:j+Wk]       
+
+            # multiply recep_area with kernel
+            conv_sum = 0.0
+            for y in range(Hk):
+                for x in range(Wk):                    
+                    conv_sum += kernel[y][x] * recep_area[y][x]
+            filtered_image[i, j] = conv_sum
     ###
 
     return filtered_image
