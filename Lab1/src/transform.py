@@ -37,6 +37,11 @@ def cs4243_resize(image, new_width, new_height):
     :param new_height: int
     :return: new_image: numpy.ndarray
     """
+    new_image = np.zeros((new_height, new_width, 3), dtype='uint8')
+    if len(image.shape)==2:
+        new_image = np.zeros((new_height, new_width), dtype='uint8')
+    ###Your code here###
+    
     # if new_width < 0 or new_height < 0, np.zeros() will throw a ValueError.
     
     # if new_width == 0 or new_height == 0, we won't need to do any calculation.
@@ -284,6 +289,27 @@ def cs4243_filter_fast(image, kernel):
 
     ###Your code here####
     
+    # pad image to handle border pixels
+    pad_height = (int)((Hk - 1)/2)
+    pad_width = (int)((Wk - 1)/2)
+    image_pad = pad_zeros(image, pad_height, pad_width)
+
+    # Flip the kernel horizontal and vertical
+    kernel = cs4243_rotate180(kernel)
+    
+    # compute effective output size, assume stride=1
+    out_height = 1 + Hi - Hk + 2*pad_height
+    out_width = 1 + Wi - Wk + 2*pad_width
+    
+    # get initial nodes of receptive fields
+    recep_fields_h = [i for i in range(out_height)]
+    recep_fields_w = [i for i in range(out_width)]
+    
+    for i in recep_fields_h:
+        for j in recep_fields_w:         
+            # get receptive area
+            recep_area = image_pad[i:i+Hk, j:j+Wk]     
+            filtered_image[i, j] = np.multiply(kernel, recep_area).sum()
     ###
 
     return filtered_image
@@ -306,6 +332,32 @@ def cs4243_filter_faster(image, kernel):
     filtered_image = np.zeros((Hi, Wi))
 
     ###Your code here####
+    
+    # pad image to handle border pixels
+    pad_height = (int)((Hk - 1)/2)
+    pad_width = (int)((Wk - 1)/2)
+    image_pad = pad_zeros(image, pad_height, pad_width)
+    
+    # compute effective output size, assume stride=1
+    out_height = 1 + Hi - Hk + 2*pad_height
+    out_width = 1 + Wi - Wk + 2*pad_width
+    
+    # get initial nodes of receptive fields
+    recep_fields_h = [i for i in range(out_height)]
+    recep_fields_w = [i for i in range(out_width)]
+    
+    # extract receptive area into matrix of shape (Hi*Wi, Hk*Wk)
+    recep_areas = []
+    for i in recep_fields_h:
+        for j in recep_fields_w:
+            recep_areas.append(image_pad[i: i+Hk, j: j+Wk].reshape(-1))
+    out = np.stack(recep_areas)
+    
+    # Flip the kernel horizontal and vertical
+    kernel = cs4243_rotate180(kernel).reshape(Hk*Wk, 1)
+    
+    # dot product kernel and receptive areas
+    filtered_image = np.dot(out, kernel).reshape(Hi, Wi)
     
     ###
 
