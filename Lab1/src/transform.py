@@ -392,18 +392,26 @@ def cs4243_upsample(image, ratio):
     return res_image
 
 
-def cs4243_gauss_pyramid(image, n=4):
+def cs4243_gauss_pyramid(image, n=4): 
     """
     10 points
     build a Gaussian Pyramid of level n
     :param image: original grey scaled image
     :param n: level of pyramid
-    :return pyramid: list, with list[0] corresponding to blurred image at level 0 
+    :return pyramid: list, with list[0] corresponding to original image.
+	:e.g., img0->blur&downsample->img1->blur&downsample->img2	
     Tips: you may need to call cs4243_gaussian_kernel() and cs4243_filter_faster()
+	The kernel for blur is given, do not change it.
     """
     kernel = cs4243_gaussian_kernel(7, 1)
     pyramid = []
     ## your code here####
+
+    pyramid = [image]
+    for i in range(n):
+        gpyr_image = cs4243_filter_faster(pyramid[i], kernel)
+        gpyr_image = cs4243_downsample(gpyr_image, 2)
+        pyramid.append(gpyr_image)
     
     ##
     return pyramid
@@ -413,7 +421,8 @@ def cs4243_lap_pyramid(gauss_pyramid):
     10 points
     build a Laplacian Pyramid from the corresponding Gaussian Pyramid
     :param gauss_pyramid: list, results of cs4243_gauss_pyramid
-    :return lap_pyramid: list, with list[0] corresponding to image at level n-1
+    :return lap_pyramid: list, with list[0] corresponding to image at level n-1 in Gaussian Pyramid.
+	Tips: The kernel for blurring during upsampling is given, you need to scale its value following the standard pipeline in laplacian pyramid.
     """
     #use same Gaussian kernel 
 
@@ -421,6 +430,12 @@ def cs4243_lap_pyramid(gauss_pyramid):
     n = len(gauss_pyramid)
     lap_pyramid = [gauss_pyramid[n-1]] # the top layer is same as Gaussian Pyramid
     ## your code here####
+    
+    for i in range(n-1, 0, -1):
+        upsampled_image = cs4243_upsample(gauss_pyramid[i], 2)
+        expanded_image = (cs4243_filter_faster(upsampled_image, kernel)) * 4
+        residual = gauss_pyramid[i-1] - expanded_image
+        lap_pyramid.append(residual)      
     
     ##
     
