@@ -50,15 +50,15 @@ def cs4243_resize(image, new_width, new_height):
     
     # resizing algorithm taken from
     # https://tech-algorithm.com/articles/nearest-neighbor-image-scaling/
-    width, height = image.shape[0], image.shape[1]
-    x_ratio = int(((width << 16) / new_width) + 1)
-    y_ratio = int(((height << 16) / new_height) + 1)
+    height, width = image.shape[0], image.shape[1]
+    w_ratio = int(((width << 16) / new_width) + 1)
+    h_ratio = int(((height << 16) / new_height) + 1)
     
-    for y in range(new_height):
-        for x in range(new_width):
-            px = int((x*x_ratio) >> 16)
-            py = int((y*y_ratio) >> 16)
-            new_image[x,y] = image[px,py]
+    for h in range(new_height):
+        for w in range(new_width):
+            pw = int((w*w_ratio) >> 16)
+            ph = int((h*h_ratio) >> 16)
+            new_image[h,w] = image[ph, pw]
     ###
     return new_image    
     
