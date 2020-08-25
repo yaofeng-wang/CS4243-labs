@@ -392,7 +392,7 @@ def cs4243_upsample(image, ratio):
     return res_image
 
 
-def cs4243_gauss_pyramid(image, n=4): 
+def cs4243_gauss_pyramid(image, n=3): 
     """
     10 points
     build a Gaussian Pyramid of level n
@@ -455,6 +455,24 @@ def cs4243_Lap_blend(A, B, mask):
     blended_image = None
     ## your code here####
     
+    lpyr_A = cs4243_lap_pyramid(cs4243_gauss_pyramid(A))
+    lpyr_B = cs4243_lap_pyramid(cs4243_gauss_pyramid(B))
+    gpyr_mask = cs4243_gauss_pyramid(mask)
+    
+    n = len(lpyr_B)
+    lpyr_C = []
+    for i in range(n):
+        concat = lpyr_A[i]*gpyr_mask[n-i-1] + lpyr_B[i]*(1.0 - gpyr_mask[n-i-1])
+        lpyr_C.append(concat)
+        
+    blended_image = lpyr_C[0]
+    for i in range(1, n):
+        # upsample
+        blended_image = cs4243_upsample(blended_image, 2)
+        blended_image = (cs4243_filter_faster(blended_image, kernel)) * 4
+        
+        # add residual to upsampled image
+        blended_image = blended_image + lpyr_C[i]
     ##
     
     return blended_image
