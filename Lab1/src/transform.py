@@ -145,7 +145,7 @@ def cs4243_histequ(image, grey_level=256):
     
     uni_hist = np.bincount(res_image.flatten(), minlength=grey_level)
     return ori_hist, cum_hist, res_image, uni_hist
- 
+    
 def cs4243_histmatch(ori_image, refer_image):
     """
     10 points
@@ -165,6 +165,18 @@ def cs4243_histmatch(ori_image, refer_image):
     
     ##your code here ###
     
+    # get cdf of ori and ref image
+    grey_level = 256
+    ori_hist, ori_cum_hist, ori_res_image, ori_uni_hist = cs4243_histequ(ori_image, grey_level)
+    ref_hist, ref_cum_hist, ref_res_image, ref_uni_hist = cs4243_histequ(refer_image, grey_level)
+    
+    # map each ori cdf to ref cdf and get the mapped index as matched grey level
+    map_value = []
+    for i in range(grey_level):
+        ori_cdf = ori_cum_hist[i]
+        matched_intensity = np.uint8(np.abs(ref_cum_hist - ori_cdf).argmin())
+        map_value.append(matched_intensity)
+
     ##
     # Set the intensity of the pixel in the raw image to its corresponding new intensity      
     height, width = ori_image.shape
