@@ -166,24 +166,18 @@ def cs4243_histmatch(ori_image, refer_image):
     ##your code here ###
 
     # get cdf of ori and ref image
+    
+    # get cdf of ori and ref image
     grey_level = 256
     ori_hist, ori_cum_hist, ori_res_image, ori_uni_hist = cs4243_histequ(ori_image, grey_level)
     ref_hist, ref_cum_hist, ref_res_image, ref_uni_hist = cs4243_histequ(refer_image, grey_level)
-       
+    
     # map each ori cdf to ref cdf and get the mapped index as matched grey level
-    map_value = np.zeros(256)
+    map_value = []
     for i in range(grey_level):
         ori_cdf = ori_cum_hist[i]
-        closest = 1
-        map_val = 0
-        for j in range(grey_level):
-            if np.abs(ref_cum_hist[j] - ori_cdf) == 0:
-                map_val = j
-                break
-            elif (np.abs(ref_cum_hist[j] - ori_cdf) <= closest):
-                closest = np.abs(ref_cum_hist[j] - ori_cdf)
-                map_val = j
-        map_value[i] = map_val 
+        matched_intensity = np.uint8(np.abs(ref_cum_hist - ori_cdf).argmin())
+        map_value.append(matched_intensity)
     ##
 
     # Set the intensity of the pixel in the raw image to its corresponding new intensity      
