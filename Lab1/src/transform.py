@@ -166,8 +166,6 @@ def cs4243_histmatch(ori_image, refer_image):
     ##your code here ###
 
     # get cdf of ori and ref image
-    
-    # get cdf of ori and ref image
     grey_level = 256
     ori_hist, ori_cum_hist, ori_res_image, ori_uni_hist = cs4243_histequ(ori_image, grey_level)
     ref_hist, ref_cum_hist, ref_res_image, ref_uni_hist = cs4243_histequ(refer_image, grey_level)
