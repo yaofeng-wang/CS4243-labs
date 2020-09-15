@@ -108,7 +108,8 @@ def k_means_clustering(data,k):
             centers = new_centers
             break
         else:
-            centers = new_centers      
+            centers = new_centers  
+    
 
     """ YOUR CODE ENDS HERE """
 
@@ -135,8 +136,16 @@ def get_bin_seeds(data, bin_size, min_bin_freq=1):
 
     """ YOUR CODE STARTS HERE """
     
+    # compress all coordinates 
+    compressed_data = np.round(data / bin_size)
     
-
+    # group pixels with same value by seeds
+    seeds = [np.where(compressed_data == u)[0].tolist() for u in np.unique(compressed_data)]
+    # filter seeds less than min_bin_freq and multiply by bandwidth
+    bin_seeds = []
+    for s in seeds:    
+        if len(s) >= min_bin_freq:
+            bin_seeds.append(s * bin_size)
 
     """ YOUR CODE ENDS HERE """
     return bin_seeds
@@ -160,7 +169,25 @@ def mean_shift_single_seed(start_seed, data, nbrs, max_iter):
     bandwidth = nbrs.get_params()['radius']
     stop_thresh = 1e-3 * bandwidth  # when mean has converged
 
-    """ YOUR CODE STARTS HERE """
+    """ YOUR CODE STARTS HERE """    
+    
+    # get points from seed
+    points = data[start_seed]
+    peak = np.mean(points, axis=0)
+        
+    num_iter = 0
+    n_points = 0
+    while (num_iter < max_iter):    
+        # get neighbour points
+        neighbors = nbrs.radius_neighbors(points)
+        indices = neighbors[1][0]
+        points = data[indices]
+        # shift peak to mean of points
+        n_points = len(points)
+        peak = tuple(np.mean(points, axis=0))
+        
+        num_iter += 1    
+        
     
     """ YOUR CODE ENDS HERE """
 
@@ -214,8 +241,6 @@ def mean_shift_clustering(data, bandwidth=0.7, min_bin_freq=5, max_iter=300):
 
     """ YOUR CODE STARTS HERE """
 
-    
-
 
     """ YOUR CODE ENDS HERE """
     end =  time()
@@ -249,7 +274,10 @@ def k_means_segmentation(img, k):
     """
 
     """ YOUR CODE STARTS HERE """
-    
+
+    # reshape to (H x W, -1) to cater for RGB and greyscale img
+    img = img.reshape(img.shape[0] * img.shape[1], -1)
+    labels, centers = k_means_clustering(img, k)  
 
     """ YOUR CODE ENDS HERE """
 
