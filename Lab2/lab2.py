@@ -72,8 +72,43 @@ def k_means_clustering(data,k):
 
 
     """ YOUR CODE STARTS HERE """
+    
+    MAX_ITERATIONS = 300
+    THRESHOLD = 0
+    
+    # initialise centers; random pick k points from P as centers    
+    random_indices = np.random.choice(data.shape[0], size=k, replace=False)
+    centers = data[random_indices, :]
+    
+    for i in range(MAX_ITERATIONS):
+        # compute l2 dist
+        l2_distances = []
+        for c in centers:
+            l2 = np.linalg.norm(data-c, ord=None, axis=1, keepdims=True)
+            l2_distances.append(l2)
+        
+        # find assigned cluster
+        labels = np.argmax(l2_distances, 0).reshape(-1, 1)
+    
+        # compute new center
+        new_centers = np.zeros_like(centers)
+        for idx in range(k):
+            # indices of data for cluster idx
+            indices = np.where(labels.flatten() == idx)[0]
+            num_of_points = len(indices)
 
-
+            ##TODO: check how to handle case where cluster is assigned nothing if need to
+            if (num_of_points > 0):
+                new_center = np.sum(data[indices], axis=0) / num_of_points
+                new_centers[idx] = new_center
+        
+        # break if meet threshold
+        if ((new_centers - centers).sum() == THRESHOLD):
+            print("error is zero")
+            centers = new_centers
+            break
+        else:
+            centers = new_centers      
 
     """ YOUR CODE ENDS HERE """
 
