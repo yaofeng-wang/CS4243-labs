@@ -72,44 +72,46 @@ def k_means_clustering(data,k):
 
 
     """ YOUR CODE STARTS HERE """
+    #print("data: ", data.shape)
     
     MAX_ITERATIONS = 300
     THRESHOLD = 0
     
     # initialise centers; random pick k points from P as centers    
     random_indices = np.random.choice(data.shape[0], size=k, replace=False)
+    #print("random_indices: ", random_indices)
     centers = data[random_indices, :]
+    #print("centers: ", centers)
     
     for i in range(MAX_ITERATIONS):
+        #print("\n------------ iteration #{} ----------------".format(i))
         # compute l2 dist
         l2_distances = []
         for c in centers:
             l2 = np.linalg.norm(data-c, ord=None, axis=1, keepdims=True)
             l2_distances.append(l2)
         
-        # find assigned cluster
-        labels = np.argmax(l2_distances, 0).reshape(-1, 1)
+        #print("l2_distances: ", l2_distances)
+        # find assigned cluster based on min L2 dist
+        labels = np.argmin(l2_distances, 0).reshape(-1, 1)
+        #print("labels: ", labels.shape)
     
         # compute new center
         new_centers = np.zeros_like(centers)
         for idx in range(k):
+            #print("cluster num: ", idx)
             # indices of data for cluster idx
             indices = np.where(labels.flatten() == idx)[0]
-            num_of_points = len(indices)
-
-            ##TODO: check how to handle case where cluster is assigned nothing if need to
-            if (num_of_points > 0):
-                new_center = np.sum(data[indices], axis=0) / num_of_points
-                new_centers[idx] = new_center
+            #print("indices: ", len(indices))
+            new_centers[idx] = np.mean(data[indices], axis=0)
+            #print("new_centers: ", new_centers)
         
         # break if meet threshold
-        if ((new_centers - centers).sum() == THRESHOLD):
-            print("error is zero")
-            centers = new_centers
-            break
-        else:
-            centers = new_centers  
-    
+        if np.abs(new_centers - centers).sum() == THRESHOLD:
+            break 
+            
+        centers = new_centers  
+        #print("updated centers: ", centers)
 
     """ YOUR CODE ENDS HERE """
 
@@ -139,14 +141,21 @@ def get_bin_seeds(data, bin_size, min_bin_freq=1):
     # compress all coordinates 
     compressed_data = np.round(data / bin_size)
     
-    # group pixels with same value by seeds
-    seeds = [np.where(compressed_data == u)[0].tolist() for u in np.unique(compressed_data)]
-    # filter seeds less than min_bin_freq and multiply by bandwidth
+    # get similar pixels idx of uniq_seeds
+    seeds = {}
+    for u in np.unique(compressed_data, axis=0):
+        seeds[tuple(u)] = np.where((compressed_data == u).all(axis=1))[0].tolist()
+        
+    #print("seeds: ", seeds)
+        
+    # filter by min threshold
     bin_seeds = []
-    for s in seeds:    
-        if len(s) >= min_bin_freq:
-            bin_seeds.append(s * bin_size)
-
+    for s, indices in seeds.items():
+        if len(indices) >= min_bin_freq:
+            s = [i * bin_size for i in s]
+            bin_seeds.append(s)
+    #print("bin_seeds: ", bin_seeds)
+        
     """ YOUR CODE ENDS HERE """
     return bin_seeds
 
@@ -169,25 +178,36 @@ def mean_shift_single_seed(start_seed, data, nbrs, max_iter):
     bandwidth = nbrs.get_params()['radius']
     stop_thresh = 1e-3 * bandwidth  # when mean has converged
 
-    """ YOUR CODE STARTS HERE """    
+    """ YOUR CODE STARTS HERE """
+    #print("start_seed: ", start_seed)
+    #print("data: ", data)
     
-    # get points from seed
-    points = data[start_seed]
-    peak = np.mean(points, axis=0)
-        
     num_iter = 0
     n_points = 0
-    while (num_iter < max_iter):    
+    peak = start_seed
+    while (num_iter < max_iter):
         # get neighbour points
-        neighbors = nbrs.radius_neighbors(points)
+        neighbors = nbrs.radius_neighbors(np.expand_dims(peak, axis=0))
+        #print("neighbors: ", neighbors)
         indices = neighbors[1][0]
+        #print("indices: ", indices)
         points = data[indices]
+        #print("points: ", points)
         # shift peak to mean of points
         n_points = len(points)
-        peak = tuple(np.mean(points, axis=0))
+        #print("n_points: ", n_points)
+        new_peak = np.mean(points, axis=0)
+        #print("new_peak: ", new_peak)
         
-        num_iter += 1    
+        # check convergence
+        if np.abs(new_peak - peak).sum() <= stop_thresh:
+            break 
+            
+        peak = new_peak
+        num_iter += 1
         
+    peak = tuple(peak)  
+    #print("peak: ", peak)
     
     """ YOUR CODE ENDS HERE """
 
@@ -240,7 +260,43 @@ def mean_shift_clustering(data, bandwidth=0.7, min_bin_freq=5, max_iter=300):
 
 
     """ YOUR CODE STARTS HERE """
-
+    #print("data: ", data[:4])
+    
+    #print("center_intensity_dict: ", center_intensity_dict)
+    # get all peaks of windows
+    peaks = np.array(list(center_intensity_dict.keys()))
+    #print("peaks: ", peaks)
+    # construct class for peaks
+    nbrs_peaks = NearestNeighbors(radius=bandwidth, n_jobs=1).fit(peaks)
+    
+    centers = []
+    for p in peaks:
+        #print("p: ", p)
+        # find peaks within bandwidth
+        nb = nbrs_peaks.radius_neighbors(np.expand_dims(p, axis=0))
+        #print("nb: ", nb)
+        indices = nb[1][0]
+        #print("indices: ", indices)
+        # if more than 1 peak
+        if len(indices) > 1:
+            keys = peaks[indices]
+            #print("keys: ", keys)
+            duplicate_peaks = { tuple(k): center_intensity_dict[tuple(k)] for k in keys }
+            max_key = max(duplicate_peaks, key=duplicate_peaks.get)  
+            #print("max_key: ", max_key)            
+            
+        else: 
+            max_key = p
+ 
+        centers.append(max_key)
+    
+    centers = np.array(centers)
+    #print("centers: ", centers)
+    
+    # assign points to nearest cluster peak        
+    nbrs_centers = NearestNeighbors(n_neighbors=1, n_jobs=1).fit(centers)
+    d, labels = nbrs_centers.kneighbors(data)
+    #print("labels: ", labels.shape)
 
     """ YOUR CODE ENDS HERE """
     end =  time()
@@ -301,6 +357,10 @@ def mean_shift_segmentation(img,b):
 
     """ YOUR CODE STARTS HERE """
     
+    # reshape to (H x W, -1) to cater for RGB and greyscale img
+    img = img.reshape(img.shape[0] * img.shape[1], -1)
+    #print("img: ", img.shape)
+    labels, centers = mean_shift_clustering(img, bandwidth=b)  
     
     """ YOUR CODE ENDS HERE """
 
