@@ -72,63 +72,39 @@ def k_means_clustering(data,k):
 
 
     """ YOUR CODE STARTS HERE """
-#     np.random.seed(1)
     n_samples, n_features = data.shape
-#     print("data: ", data.shape)
     
     MAX_ITERATIONS = 300
     THRESHOLD = 0
     
     # initialise centers; random pick k points from P as centers    
     random_indices = np.random.choice(data.shape[0], size=k, replace=False)
-    #print("random_indices: ", random_indices)
     centers = data[random_indices, :]
-#     print("centers: ", centers)
     data = data.astype(int)
     centers = centers.astype(int)
     
-    for i in range(MAX_ITERATIONS):
-#         print("\n------------ iteration #{} ----------------".format(i))
-        
+    for i in range(MAX_ITERATIONS):      
         # compute squared l2 norm between each center and all other pixels
         l2_distances = []
         for c in centers:
             l2 = np.linalg.norm(data - c, ord=None, axis=1, keepdims=True) ** 2
-#             print("l2.dtype: ",l2.dtype)
             l2_distances.append(l2)
-#         print("l2_distances: ", l2_distances)
-            
-#         print("data[0]: ", data[:5])
-#         print("centers[0]: ", centers)
-#         print("l2_distances[0][0]: ", l2_distances)
         
-        # find assigned cluster based on min L2 dist
-        
+        # find assigned cluster based on min L2 dist        
         labels = np.argmin(l2_distances, 0).reshape(-1, 1)
-        assert labels.shape == (n_samples, 1)
-#         print("labels: ", labels)
     
         # compute new center
         new_centers = np.zeros_like(centers)
         for idx in range(k):
-            #print("cluster num: ", idx)
             # indices of data for cluster idx
-            indices = np.where(labels == idx)[0]
-#             print(indices)
-#             print("indices: ", len(indices))
-    
+            indices = np.where(labels == idx)[0] 
             new_centers[idx] = np.mean(data[indices], axis=0)
-            assert new_centers[idx].shape == (n_features,)
-#             print("new_centers: ", new_centers)
-#         print("new_centers: ", new_centers)
         
         # break if meet threshold
         if np.abs(new_centers - centers).sum() <= THRESHOLD:
-#             print("SAME!")
             break 
             
         centers = new_centers  
-        #print("updated centers: ", centers)
 
     """ YOUR CODE ENDS HERE """
 
@@ -350,7 +326,6 @@ def mean_shift_segmentation(img,b):
     
     # reshape to (H x W, -1) to cater for RGB and greyscale img
     img = img.reshape(img.shape[0] * img.shape[1], -1)
-    #print("img: ", img.shape)
     labels, centers = mean_shift_clustering(img, bandwidth=b)  
     
     """ YOUR CODE ENDS HERE """
