@@ -153,7 +153,24 @@ def harris_corners(img, window_size=3, k=0.04):
     response = np.zeros((H, W))
 
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+    Ix = filters.sobel_v(img)
+    Iy = filters.sobel_h(img)
+    Ixx = Ix * Ix
+    Ixy = Ix * Iy
+    Iyy = Iy * Iy
+    
+    M_Ixy = convolve(Ixy, window, mode='constant', cval=0.0)
+    M_Ixx = convolve(Ixx, window, mode='constant', cval=0.0)
+    M_Iyy = convolve(Iyy, window, mode='constant', cval=0.0)
+    
+    for h in range(H):
+        for w in range(W):
+            det = M_Ixx[h][w] * M_Iyy[h][w] - M_Ixy[h][w] ** 2
+            trace = M_Ixx[h][w] + M_Iyy[h][w]
+            
+            response[h][w] = det - k * trace ** 2
+            
+    
     ### END YOUR CODE
 
     return response
@@ -179,7 +196,15 @@ def simple_descriptor(patch):
     """
     feature = []
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+    
+    mean = np.mean(patch)
+    sd = np.std(patch)
+    
+    if sd == 0:
+        feature = (patch - mean).flatten()
+    else:
+        feature = ((patch - mean) / sd).flatten()
+        
     ### END YOUR CODE
     return feature
 
@@ -229,7 +254,25 @@ def match_descriptors(desc1, desc2, threshold=0.5):
     dists = cdist(desc1, desc2)
 
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+    M = desc2.shape[0]
+    
+    for index in range(N):
+        dists_sorted = sorted(dists[index])
+        closest_dist = dists_sorted[0]
+        second_closest_dist = dists_sorted[1]
+        
+        # did not consider edge cases because the generated matches already looks very
+        # similar to the expected outputs, e.g. if descriptor x in desc1 has
+        # a closest match descriptor y in desc2 that has a closest match 
+        # descriptor z in desc1 such that z != x.
+        # 
+        if (closest_dist * 1.0 / second_closest_dist) < threshold:
+            for m in range(M):
+                if dists[index][m] == closest_dist:
+                    matches.append([index, m])
+
+    matches = np.array(matches)    
+        
     ### END YOUR CODE
     
     return matches
@@ -322,80 +365,3 @@ def sift_descriptor(patch):
     # END YOUR CODE
     
     return feature
-
-
-def linear_blend(img1_warped, img2_warped):
-    """
-    Linearly blend img1_warped and img2_warped by following the steps:
-
-    1. Define left and right margins (already done for you)
-    2. Define a weight matrices for img1_warped and img2_warped
-        np.linspace and np.tile functions will be useful
-    3. Apply the weight matrices to their corresponding images
-    4. Combine the images
-
-    Args:
-        img1_warped: Refernce image warped into output space
-        img2_warped: Transformed image warped into output space
-
-    Returns:
-        merged: Merged image in output space
-    """
-    out_H, out_W = img1_warped.shape # Height and width of output space
-    img1_mask = (img1_warped != 0)  # Mask == 1 inside the image
-    img2_mask = (img2_warped != 0)  # Mask == 1 inside the image
-
-    # Find column of middle row where warped image 1 ends
-    # This is where to end weight mask for warped image 1
-    right_margin = out_W - np.argmax(np.fliplr(img1_mask)[out_H//2, :].reshape(1, out_W), 1)[0]
-
-    # Find column of middle row where warped image 2 starts
-    # This is where to start weight mask for warped image 2
-    left_margin = np.argmax(img2_mask[out_H//2, :].reshape(1, out_W), 1)[0]
-
-    ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
-    ### END YOUR CODE
-
-    return merged
-
-
-def stitch_multiple_images(imgs, desc_func=simple_descriptor, patch_size=5):
-    """
-    Stitch an ordered chain of images together.
-
-    Args:
-        imgs: List of length m containing the ordered chain of m images
-        desc_func: Function that takes in an image patch and outputs
-            a 1D feature vector describing the patch
-        patch_size: Size of square patch at each keypoint
-
-    Returns:
-        panorama: Final panorma image in coordinate frame of reference image
-    """
-    # Detect keypoints in each image
-    keypoints = []  # keypoints[i] corresponds to imgs[i]
-    for img in imgs:
-        kypnts = corner_peaks(harris_corners(img, window_size=3),
-                              threshold_rel=0.05,
-                              exclude_border=8)
-        keypoints.append(kypnts)
-    # Describe keypoints
-    descriptors = []  # descriptors[i] corresponds to keypoints[i]
-    for i, kypnts in enumerate(keypoints):
-        desc = describe_keypoints(imgs[i], kypnts,
-                                  desc_func=desc_func,
-                                  patch_size=patch_size)
-        descriptors.append(desc)
-    # Match keypoints in neighboring images
-    matches = []  # matches[i] corresponds to matches between
-                  # descriptors[i] and descriptors[i+1]
-    for i in range(len(imgs)-1):
-        mtchs = match_descriptors(descriptors[i], descriptors[i+1], 0.7)
-        matches.append(mtchs)
-
-    ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
-    ### END YOUR CODE
-
-    return panorama
