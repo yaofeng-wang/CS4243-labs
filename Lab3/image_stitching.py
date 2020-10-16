@@ -171,7 +171,7 @@ def compute_homography(src, dst):
     
     # combine results
     h_matrix = np.dot(np.dot(np.linalg.inv(T_dst), H), T_src)
-    
+    h_matrix = h_matrix / h_matrix[2][2] # not sure why, last value should be 1
     ### END YOUR CODE
 
     return h_matrix
@@ -192,7 +192,7 @@ def get_Ai(src_kp, dst_kp):
 def normalize(img):
 
     m = np.mean(img, axis=0)
-    s = np.sqrt(2) / np.mean(np.sqrt(np.sum((img - m) ** 2, axis=1)))
+    s = np.sqrt(2) / np.mean(euclidean_dist(img - m))
     Tr = np.array([[s, 0, -m[0]*s], 
                   [0, s, -m[1]*s],
                   [0, 0, 1      ]]) # (3 x 3)
@@ -371,7 +371,7 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
     """
     N = matches.shape[0]
     n_samples = int(N * sampling_ratio)
-
+    
     # Please note that coordinates are in the format (y, x)
     matched1 = pad(keypoints1[matches[:,0]])
     matched2 = pad(keypoints2[matches[:,1]])
@@ -384,29 +384,37 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
     # RANSAC iteration start
     ### YOUR CODE HERE
     
+    matched1[:, [0,1]] = matched1[:, [1,0]]
+    matched2[:, [0,1]] = matched2[:, [1,0]]
+    matched1_unpad[:, [0,1]] = matched1_unpad[:, [1,0]]
+    matched2_unpad[:, [0,1]] = matched2_unpad[:, [1,0]]
+    
     for i in range(n_iters):
         indices = np.random.choice(range(N), size=n_samples)
-        src = matched2_unpad[indices]
-        dst = matched1_unpad[indices]
+        src = matched1_unpad[indices]
+        dst = matched2_unpad[indices]
         
         H = compute_homography(src, dst)
-        matched2_trans = transform_homography(matched2_unpad, H)
+        matched1_trans = transform_homography(matched1_unpad, H)
         
-        dist = np.sum((matched2_trans - matched1_unpad) ** 2, axis=1)
+        dist = np.sum((matched1_trans - matched2_unpad) ** 2, axis=1)
         if np.sum(dist < threshold) > n_inliers:
             max_inliers = dist < threshold
             n_inliers = np.sum(dist < threshold)
         
-    src = matched2_unpad[max_inliers]
-    dst = matched1_unpad[max_inliers]
+    src = matched1_unpad[max_inliers]
+    dst = matched2_unpad[max_inliers]
     H = compute_homography(src, dst)
     
-    matched2_trans = transform_homography(matched2_unpad, H)
-    dist = np.sum((matched2_trans - matched1_unpad) ** 2, axis=1)
+    matched1_trans = transform_homography(matched1_unpad, H)
+    dist = np.sum((matched1_trans - matched2_unpad) ** 2, axis=1)
     max_inliers = dist < threshold
     
     ### END YOUR CODE
     return H, matches[max_inliers]
+
+def euclidean_dist(x):
+    return np.sqrt(np.sum(x ** 2, axis=1))
 
 
 def sift_descriptor(patch):
@@ -452,7 +460,28 @@ def sift_descriptor(patch):
     histogram = np.zeros((4,4,8))
     
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+     
+    cells = [[[] for _  in range(4)] for _ in range(4)]
+
+    for x in range(16):
+        for y in range(16):
+            cell_x = x // 4
+            cell_y = y // 4
+            m = np.sqrt(dx ** 2 + dy ** 2)
+            o = (np.arctan2(dy, dx) * 180 / np.pi) + 180 # add 180 so that range of o is 0 to 360
+            o_bin = o // 45
+            cells[cell_x][cell_y].append(o_bin)
+
+    feature = np.array([])
+    for x in range(4):
+        for y in range(4):
+            hist, bin_edges = np.histogram(cells[x][y], bins=range(9))
+            feature = np.concatenate((feature, hist), axis=0)
+            
+    length = np.sqrt(np.sum(feature ** 2))
+    feature = feature / length
+    
+    assert len(feature) == 128
     # END YOUR CODE
     
     return feature
