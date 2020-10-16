@@ -124,11 +124,81 @@ def compute_homography(src, dst):
     h_matrix = np.eye(3, dtype=np.float64)
 
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+       
+    '''
+    0. convert x and x' to homogenous
+    1. normalize x
+    2. normalize x'
+    3. DLT
+    4. combine 1, 2, 3
+    
+    DLT
+    1. For each correspondence compute A_i
+    2. stack the A_i into A. A has shape 2n x 9
+    3. Get SVD of A.
+    4. H is the column with smallest singular value
+    
+    '''
+    # this function computes a mapping from src to dst,
+    # instead of from src to dst as per the instructions given
+    
+    
+    N = len(src)
+    
+    if N < 4:
+        # error
+        pass
+    
+    # covert to homogeneous matrix
+    src = pad(src)
+    dst = pad(dst)
+    
+    # normalize src and dst
+    T_src, norm_src = normalize(src)
+    T_dst, norm_dst = normalize(dst)
+    
+    # compute A
+    l = []
+    for i in range(N):
+        l.append(get_Ai(norm_src[i], norm_dst[i]))
+    A = np.concatenate(l, axis=0)
+    
+    # get SVD of A
+    _, _, vh = np.linalg.svd(A)
+    
+    # get H
+    H = vh[-1].reshape((3,3))
+    
+    # combine results
+    h_matrix = np.dot(np.dot(np.linalg.inv(T_dst), H), T_src)
+    
     ### END YOUR CODE
 
     return h_matrix
 
+def get_Ai(src_kp, dst_kp):
+    
+    x = src_kp[0]
+    y = src_kp[1]
+    x_p = dst_kp[0]
+    y_p = dst_kp[1]
+    
+    Ai = np.array([
+            [-x, -y, -1, 0, 0, 0, x*x_p, y*x_p, x_p],
+            [0, 0, 0, -x, -y, -1, x*y_p, y*y_p, y_p]
+    ])
+    return Ai
+
+def normalize(img):
+
+    m = np.mean(img, axis=0)
+    s = np.sqrt(2) / np.mean(np.sqrt(np.sum((img - m) ** 2, axis=1)))
+    Tr = np.array([[s, 0, -m[0]*s], 
+                  [0, s, -m[1]*s],
+                  [0, 0, 1      ]]) # (3 x 3)
+    norm_img = np.dot(Tr, img.T)
+    return Tr, norm_img.T
+    
 def harris_corners(img, window_size=3, k=0.04):
     """
     Compute Harris corner response map. Follow the math equation
@@ -313,7 +383,28 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
 
     # RANSAC iteration start
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+    
+    for i in range(n_iters):
+        indices = np.random.choice(range(N), size=n_samples)
+        src = matched2_unpad[indices]
+        dst = matched1_unpad[indices]
+        
+        H = compute_homography(src, dst)
+        matched2_trans = transform_homography(matched2_unpad, H)
+        
+        dist = np.sum((matched2_trans - matched1_unpad) ** 2, axis=1)
+        if np.sum(dist < threshold) > n_inliers:
+            max_inliers = dist < threshold
+            n_inliers = np.sum(dist < threshold)
+        
+    src = matched2_unpad[max_inliers]
+    dst = matched1_unpad[max_inliers]
+    H = compute_homography(src, dst)
+    
+    matched2_trans = transform_homography(matched2_unpad, H)
+    dist = np.sum((matched2_trans - matched1_unpad) ** 2, axis=1)
+    max_inliers = dist < threshold
+    
     ### END YOUR CODE
     return H, matches[max_inliers]
 
