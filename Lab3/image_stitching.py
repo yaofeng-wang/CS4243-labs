@@ -460,28 +460,25 @@ def sift_descriptor(patch):
     histogram = np.zeros((4,4,8))
     
     ### YOUR CODE HERE
-     
-    cells = [[[] for _  in range(4)] for _ in range(4)]
 
-    for x in range(16):
-        for y in range(16):
-            cell_x = x // 4
-            cell_y = y // 4
-            m = np.sqrt(dx ** 2 + dy ** 2)
-            o = (np.arctan2(dy, dx) * 180 / np.pi) + 180 # add 180 so that range of o is 0 to 360
-            o_bin = o // 45
-            cells[cell_x][cell_y].append(o_bin)
-
-    feature = np.array([])
-    for x in range(4):
-        for y in range(4):
-            hist, bin_edges = np.histogram(cells[x][y], bins=range(9))
-            feature = np.concatenate((feature, hist), axis=0)
+    m = np.sqrt(dx ** 2 + dy ** 2)
+    o = (np.arctan2(dy, dx) * 180 / np.pi) + 180    # convert to 0-360 range
+    o_bin = o // 45    
             
+    # create histogram
+    feature = np.array([])
+    for i in range(4):
+        for j in range(4):
+            o_cell = o_bin[i*4: (i+1)*4, j*4: (j+1)*4]
+            hist, bin_edges = np.histogram(o_cell, bins=range(9))
+            feature = np.concatenate((feature, hist), axis=0)
+    
+    # normalise hist
     length = np.sqrt(np.sum(feature ** 2))
     feature = feature / length
     
     assert len(feature) == 128
+    
     # END YOUR CODE
     
     return feature
