@@ -388,8 +388,8 @@ def track_features(frames, keypoints,
                 continue
 
             # Compute error between patches in image I and J
-            patchI = I[yi-w:yi+w, xi-w:xi+w]
-            patchJ = J[yj-w:yj+w, xj-w:xj+w]
+            patchI = I[yi-w:yi+w+1, xi-w:xi+w+1]
+            patchJ = J[yj-w:yj+w+1, xj-w:xj+w+1]
             error = compute_error(patchI, patchJ)
             if error > error_thresh:
                 continue
