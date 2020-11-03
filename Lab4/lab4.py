@@ -29,17 +29,12 @@ def meanShift(dst, track_window, max_iter=100,stop_thresh=1):
     
     """ YOUR CODE STARTS HERE """
 
-
-    
-
+            
     """ YOUR CODE ENDS HERE """
     
     return track_window
     
     
-    
-        
-
 def IoU(bbox1, bbox2):
     """ Compute IoU of two bounding boxes.
 
@@ -56,9 +51,31 @@ def IoU(bbox1, bbox2):
     score = 0
 
     """ YOUR CODE STARTS HERE """
-
-
+    # https://www.pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection/
     
+    # bottom right point of bbox1
+    x11 = x1 + h1
+    y11 = y1 + w1
+    
+    # bottom right point of bbox2
+    x21 = x2 + h2
+    y21 = y2 + w2
+    
+    # determine the (x, y)-coordinates of the intersection rectangle
+    xA = max(x1, x2)
+    yA = max(y1, y2)
+    xB = min(x11, x21)
+    yB = min(y11, y21)
+
+    # compute the area of intersection rectangle
+    interArea = max(0, xB - xA + 1) * max(0, yB - yA + 1)
+    
+	# compute the area of both the prediction and ground-truth
+	# rectangles
+    box1Area = (x11 - x1 + 1) * (y11 - y1 + 1)
+    box2Area = (x21 - x2 + 1) * (y21 - y2 + 1)
+    
+    score = interArea / float(box1Area + box2Area - interArea)
 
     """ YOUR CODE ENDS HERE """
 
