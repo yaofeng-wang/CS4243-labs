@@ -28,7 +28,33 @@ def meanShift(dst, track_window, max_iter=100,stop_thresh=1):
     completed_iterations = 0
     
     """ YOUR CODE STARTS HERE """
+ 
+    dst_h, dst_w = dst.shape
 
+    while completed_iterations < max_iter:
+        x, y, w, h = track_window
+        
+        points_p = []   # to store (x, y, probability) of the points
+        for row in range(y, y+h):
+            for col in range(x, x+w):
+                # consider points in image only                 
+                if row in range(dst_h) and col in range(dst_w):
+                    p = dst[row, col] 
+                    points_p.append((row*p, col*p, p))             
+                              
+        points_p = np.array(points_p)
+        points_p_sum = np.sum(points_p, axis=0)
+        new_peak_y, new_peak_x = points_p_sum[0:2] / points_p_sum[2]
+        
+        # get top left yx
+        new_y = int(new_peak_y - h/2)
+        new_x = int(new_peak_x - w/2)
+        
+        if np.abs(new_x - x) + np.abs(new_y - y) <= stop_thresh:
+            break
+
+        completed_iterations += 1
+        track_window = (new_x, new_y, w, h)  
             
     """ YOUR CODE ENDS HERE """
     
@@ -51,15 +77,14 @@ def IoU(bbox1, bbox2):
     score = 0
 
     """ YOUR CODE STARTS HERE """
-    # https://www.pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection/
     
     # bottom right point of bbox1
-    x11 = x1 + h1
-    y11 = y1 + w1
+    x11 = x1 + w1
+    y11 = y1 + h1
     
     # bottom right point of bbox2
-    x21 = x2 + h2
-    y21 = y2 + w2
+    x21 = x2 + w2
+    y21 = y2 + h2
     
     # determine the (x, y)-coordinates of the intersection rectangle
     xA = max(x1, x2)
