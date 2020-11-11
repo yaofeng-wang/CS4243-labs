@@ -28,38 +28,45 @@ def meanShift(dst, track_window, max_iter=100,stop_thresh=1):
     completed_iterations = 0
     
     """ YOUR CODE STARTS HERE """
- 
+    # original implementation: > 300s 
+    # vectorized implementation : ~ 20s
+    
     dst_h, dst_w = dst.shape
+    
+    # (x, y) is the top left corner of track_window 
+    x, y, w, h = track_window
+    
+    # place zeros around dst
+    # so that its ok even if track_window goes out of the image
+    dst_border = np.zeros((dst_h+2*h, dst_w+2*w))
+    dst_border[h:dst_h+h, w:dst_w+w] = dst
 
     while completed_iterations < max_iter:
+        # (x, y) is the top left corner of track_window 
         x, y, w, h = track_window
         
-        points_p = []   # to store (x, y, probability) of the points
-        for row in range(y, y+h):
-            for col in range(x, x+w):
-                # consider points in image only                 
-                if row in range(dst_h) and col in range(dst_w):
-                    p = dst[row, col] 
-                    points_p.append((row*p, col*p, p))             
-                              
-        points_p = np.array(points_p)
-        points_p_sum = np.sum(points_p, axis=0)
-        new_peak_y, new_peak_x = points_p_sum[0:2] / points_p_sum[2]
+        # get x value, y value, and weight for each pixel within track_window
+        xs = np.tile(np.array(range(x,x+w)), h).reshape(h, w)
+        ys = np.tile(np.array(range(y,y+h)), w).reshape(w, h).T
+        weight = dst_border[y+h:y+h*2, x+w:x+w*2] / np.sum(dst_border[y+h:y+h*2, x+w:x+w*2])
         
-        # get top left yx
-        new_y = int(new_peak_y - h/2)
-        new_x = int(new_peak_x - w/2)
+        # compute coordinates of centriod
+        mean_x = np.sum(xs * weight) 
+        mean_y = np.sum(ys * weight) 
         
-        if np.abs(new_x - x) + np.abs(new_y - y) <= stop_thresh:
+        # get top left coordinates
+        new_y = int(mean_y - h/2)
+        new_x = int(mean_x - w/2)
+        
+        if np.sqrt(np.abs(new_x - x) + np.abs(new_y - y)) < stop_thresh:
             break
-
         completed_iterations += 1
         track_window = (new_x, new_y, w, h)  
             
     """ YOUR CODE ENDS HERE """
     
     return track_window
-    
+
     
 def IoU(bbox1, bbox2):
     """ Compute IoU of two bounding boxes.
@@ -145,10 +152,22 @@ def lucas_kanade(img1, img2, keypoints, window_size=9):
         y, x = int(round(y)), int(round(x))
 
         """ YOUR CODE STARTS HERE """
-
-
-    
-
+        
+        # form A
+        I_y = Iy[int(y-w):int(y+w)+1, int(x-w):int(x+w)+1].reshape((-1, 1))
+        I_x = Ix[int(y-w):int(y+w)+1, int(x-w):int(x+w)+1].reshape((-1, 1))
+        A = np.concatenate([I_y, I_x], axis=1)
+        assert A.shape == (window_size * window_size, 2)
+        
+        # form b
+        b = -1 * It[int(y-w):int(y+w)+1, int(x-w):int(x+w)+1].reshape((-1, 1))
+        assert b.shape == (window_size * window_size, 1)
+        
+        # solve least squares
+        flow_vector = np.matmul(np.matmul(np.linalg.inv(np.matmul(A.T, A)), A.T), b).reshape(2,)
+        assert (flow_vector.shape == (2,))
+        flow_vectors.append(flow_vector)
+        
         """ YOUR CODE ENDS HERE """
 
     flow_vectors = np.array(flow_vectors)
@@ -171,10 +190,9 @@ def compute_error(patch1, patch2):
     error = 0
 
     """ YOUR CODE STARTS HERE """
-
-
-    
-
+    patch1 = (patch1 - np.mean(patch1)) / np.std(patch1)
+    patch2 = (patch2 - np.mean(patch2)) / np.std(patch2)
+    error = np.mean((patch1 - patch2) ** 2)   
     """ YOUR CODE ENDS HERE """
 
     return error
@@ -211,8 +229,7 @@ def iterative_lucas_kanade(img1, img2, keypoints,
 
     flow_vectors = []
     w = window_size // 2
-    
-   
+
     # Compute spatial gradients
     Iy, Ix = np.gradient(img1)
 
@@ -221,13 +238,38 @@ def iterative_lucas_kanade(img1, img2, keypoints,
         y1 = int(round(y)); x1 = int(round(x))
         
         """ YOUR CODE STARTS HERE """
+        for _ in range(num_iters):
+            # compute spatial gradient matrix
+            I_y = Iy[y1-w:y1+w+1, x1-w:x1+w+1].reshape((-1,1))
+            assert I_y.shape == (window_size * window_size, 1)
+            I_x = Ix[y1-w:y1+w+1, x1-w:x1+w+1].reshape((-1,1))
+            assert I_x.shape == (window_size * window_size, 1)
+            G = np.array([[np.sum(I_y**2), np.sum(I_x * I_y)], [np.sum(I_x * I_y), np.sum(I_x**2)]])
+            assert G.shape == (2, 2)
 
+            # compute temporal difference           
+            It = (img1[y1-w:y1+w+1, x1-w:x1+w+1] - img2[int(round(y1-w+gy+v[0])):int(round(y1-w+gy+v[0]+1)),int(round(x1-w+gx+v[1])):int(round(x1+w+1+gx+v[1]))]).reshape((-1, 1))
+            
+            print(img1.shape)
+            print(img2.shape)
+            print(y1)
+            print(x1)
+            print(w)
+            print(g)
+            print(v)
+            assert It.shape == (window_size * window_size, 1)
 
-    
+            # compute image mismatch vector
+            b = np.array([np.sum(I_y * It), np.sum(I_x * It)]).reshape((2,1))
+            assert b.shape == (2, 1)
+
+            # compute optical flow
+            v += np.matmul(np.linalg.inv(G), b).reshape(2,)
 
         """ YOUR CODE ENDS HERE """
 
-        vx, vy = v
+        #vx, vy = v
+        vy, vx = v # can be change, mentioned in forum
         flow_vectors.append([vy, vx])
         
     return np.array(flow_vectors)
@@ -263,11 +305,18 @@ def pyramid_lucas_kanade(img1, img2, keypoints,
 
     # Initialize pyramidal guess
     g = np.zeros(keypoints.shape)
-
-    """ YOUR CODE STARTS HERE """
-
-
     
+    """ YOUR CODE STARTS HERE """
+    for l in range(level,-1,-1):
+        # compute location of p on I^L
+        kp = keypoints / (scale ** l)
+
+        # compute d^L
+        d = iterative_lucas_kanade(pyramid1[l], pyramid2[l], kp, window_size, num_iters, g)
+
+        # guess for level L-1
+        if l != 0:
+            g = scale * (g + d)
 
     """ YOUR CODE ENDS HERE """
 
