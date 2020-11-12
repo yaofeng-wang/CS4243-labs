@@ -152,21 +152,21 @@ def lucas_kanade(img1, img2, keypoints, window_size=9):
         y, x = int(round(y)), int(round(x))
 
         """ YOUR CODE STARTS HERE """
-        
         # form A
-        I_y = Iy[int(y-w):int(y+w)+1, int(x-w):int(x+w)+1].reshape((-1, 1))
-        I_x = Ix[int(y-w):int(y+w)+1, int(x-w):int(x+w)+1].reshape((-1, 1))
-        A = np.concatenate([I_y, I_x], axis=1)
+        I_y = Iy[y-w:y+w+1, x-w:x+w+1].reshape((-1, 1))
+        I_x = Ix[y-w:y+w+1, x-w:x+w+1].reshape((-1, 1))
+        A = np.concatenate([I_x, I_y], axis=1) # output matches given output using [I_x, I_y], but not with [I_y, I_x].
         assert A.shape == (window_size * window_size, 2)
         
         # form b
-        b = -1 * It[int(y-w):int(y+w)+1, int(x-w):int(x+w)+1].reshape((-1, 1))
+        b = -1 * It[y-w:y+w+1, x-w:x+w+1].reshape((-1, 1))
         assert b.shape == (window_size * window_size, 1)
         
         # solve least squares
-        flow_vector = np.matmul(np.matmul(np.linalg.inv(np.matmul(A.T, A)), A.T), b).reshape(2,)
-        assert (flow_vector.shape == (2,))
-        flow_vectors.append(flow_vector)
+        flow_vector, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+        assert (flow_vector.shape == (2,1))
+        
+        flow_vectors.append(flow_vector.reshape((2,)))
         
         """ YOUR CODE ENDS HERE """
 
@@ -190,9 +190,9 @@ def compute_error(patch1, patch2):
     error = 0
 
     """ YOUR CODE STARTS HERE """
-    patch1 = (patch1 - np.mean(patch1)) / np.std(patch1)
-    patch2 = (patch2 - np.mean(patch2)) / np.std(patch2)
-    error = np.mean((patch1 - patch2) ** 2)   
+    norm_patch1 = (patch1 - np.mean(patch1)) / np.std(patch1)
+    norm_patch2 = (patch2 - np.mean(patch2)) / np.std(patch2)
+    error = np.mean((norm_patch1 - norm_patch2) ** 2)   
     """ YOUR CODE ENDS HERE """
 
     return error
@@ -248,15 +248,9 @@ def iterative_lucas_kanade(img1, img2, keypoints,
             assert G.shape == (2, 2)
 
             # compute temporal difference           
-            It = (img1[y1-w:y1+w+1, x1-w:x1+w+1] - img2[int(round(y1-w+gy+v[0])):int(round(y1-w+gy+v[0]+1)),int(round(x1-w+gx+v[1])):int(round(x1+w+1+gx+v[1]))]).reshape((-1, 1))
+            It = (img1[y1-w:y1+w+1, x1-w:x1+w+1] - img2[int(round(y1-w+gy+v[0])):int(round(y1+w+gy+v[0]+1)),int(round(x1-w+gx+v[1])):int(round(x1+w+1+gx+v[1]))]).reshape((-1, 1))
             
-            print(img1.shape)
-            print(img2.shape)
-            print(y1)
-            print(x1)
-            print(w)
-            print(g)
-            print(v)
+            
             assert It.shape == (window_size * window_size, 1)
 
             # compute image mismatch vector
@@ -311,7 +305,7 @@ def pyramid_lucas_kanade(img1, img2, keypoints,
         # compute location of p on I^L
         kp = keypoints / (scale ** l)
 
-        # compute d^L
+        # compute optical flow vector at level L
         d = iterative_lucas_kanade(pyramid1[l], pyramid2[l], kp, window_size, num_iters, g)
 
         # guess for level L-1
